@@ -11,6 +11,9 @@ Follow the below steps to deploy the GitRecon:
 2. Place the repository's files in the webserver.
 3. Open the index.html to access the tool.
 
+### Output
+Search results can be exported in CSV file, downloaded with Company Domain & search keyword mentioned in report's file name for future references.
+
 ### GitRecon Page
 ![GR_Landing_Page](https://github.com/Somil-Keswani/GitRecon/assets/30586163/1c26b1ea-afc5-4a31-aa88-20044587a11c)
 
