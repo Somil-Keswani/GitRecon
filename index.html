@@ -1,0 +1,342 @@
+<html>
+ 	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="author" content="Somil Keswani">
+		<script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
+		crossorigin="anonymous"></script>
+		<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" integrity="sha256-lSjKY0/srUM9BE3dPm+c4fBo1dky2v27Gdjm2uoZaL0="
+		crossorigin="anonymous"></script>
+		<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+		<style>
+		body{
+			background-image: url('bg.jpg');
+			background-size: cover;
+			background-repeat: no-repeat;
+			background-attachment: fixed;
+        }
+		html{
+ 			position:fixed;
+			top:0;
+			bottom:0;
+			left:0;
+			right:0;
+		}
+		.wrap-cell {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 300px;
+		}
+		</style>
+		
+		<script>
+
+		google.charts.load('current', {'packages':['table']});
+		
+		function sleep(ms) 
+		{
+  			return new Promise(resolve => setTimeout(resolve, ms));
+		}
+		var allData = [];
+		
+		function Secretscanning()
+		{
+			try
+			{
+				resetTable();
+				var isValid = true;
+				$('#CompanyDomain,#GitAccessToken').each(function()
+				{
+				if ($.trim($(this).val()) == '')
+				{
+					isValid = false;
+					$(this).css(
+					{
+					"border": "1px solid red",
+					"background": "#FFCECE"
+					});
+				}
+				else
+				{
+					$(this).css(
+					{
+					"border": "",
+					"background": ""
+					});
+				}
+				});
+
+				if (isValid == false) 
+				alert("Please fill the mandatory fields");
+
+				else
+				{
+					$("#btnGo").attr("disabled", true);
+					document.getElementById("LoadingImg").style.display="block";
+					const request = async () => 
+					{		
+						
+							var iterator = 1;
+							var upto;
+							do
+							{
+								var CompanyDomain = document.getElementById('CompanyDomain').value;
+								var GitAccessToken = document.getElementById('GitAccessToken').value;
+								var SensitiveInfo = document.getElementById('SensitiveInfo').value;
+								var customSearchTerm = document.getElementById('customSearchTerm').value.trim();
+								
+								if (customSearchTerm !== "") {
+									SensitiveInfo = customSearchTerm;
+								}
+								var url= 'https://api.github.com/search/code?q="' +CompanyDomain+ '"+"' +SensitiveInfo+ '"+sort:indexed-desc&per_page=100&page=' + iterator;
+								for(var i=0;i<100000;i++)
+								{}
+								const response = await fetch(url, {
+									method: 'GET', 
+									headers: 
+									{
+										'Authorization': 'Bearer ' +GitAccessToken,
+										'Content-Type': 'application/json;charset=utf-8',
+										'Accept': 'application/vnd.github.v3.text-match+json',
+										'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1521.3 Safari/537.36'
+									}
+									});
+								
+								const json = await response.json();
+								
+								upto = Math.ceil(json.total_count/100);
+								if(response.status==200)
+								{
+									var items = json.items;
+									items.forEach(function (item)
+									{
+										var fragment1 = "";
+										var fragment2 = "";
+										if (item.text_matches[0] !== undefined) {
+											fragment1 = highlightKeywords(item.text_matches[0].fragment, SensitiveInfo, CompanyDomain);
+										}
+										if (item.text_matches[1] !== undefined) {
+										fragment2 = highlightKeywords(item.text_matches[1].fragment, SensitiveInfo, CompanyDomain);
+										}
+										var mergedSensitiveInfo = fragment1 + ' ' + fragment2;
+										allData.push([item.repository.full_name,item.path,'<a target="_blank" href="' + item.html_url + '"> Click Here for Repo URL </a>','<code>' + mergedSensitiveInfo + '</code>']);
+									})
+								}
+								iterator = iterator+1;
+							}while(iterator<=upto)
+						drawTable(allData);
+					}
+					request();
+				} 	
+			}	
+			catch(ex)
+			{
+				
+			}
+		}
+
+		function handleCustomSearch() {
+				var customSearchTerm = document.getElementById('customSearchTerm').value.trim();
+				var sensitiveDropdown = document.getElementById('SensitiveInfo');
+
+					if (customSearchTerm !== '') {
+						sensitiveDropdown.disabled = true;
+						sensitiveDropdown.value = customSearchTerm;
+						} else {
+						sensitiveDropdown.disabled = false;
+						sensitiveDropdown.value = 'Secret_key';
+			}
+		}
+		function resetTable() {
+			allData = [];
+
+			var tableWrapper = document.getElementById('OutputTable');
+			while (tableWrapper.firstChild) {
+			tableWrapper.removeChild(tableWrapper.firstChild);
+			}
+
+			drawTable([]);
+		}
+		function drawTable(allData)
+		{
+			if(allData!=undefined)
+			{	
+				var data = new google.visualization.DataTable();
+				data.addColumn('string','Full Name');
+				data.addColumn('string','Path');
+				data.addColumn('string','GIT Repo URL');
+				data.addColumn('string','Sensitive Info');
+				
+				data.addRows(allData);
+				var tableWrapper = document.getElementById('OutputTable');
+				while (tableWrapper.firstChild) {
+					tableWrapper.removeChild(tableWrapper.firstChild);
+				}
+
+				var table = new google.visualization.Table(document.getElementById('OutputTable'));
+				var options = {
+					showRowNumber: true,
+					width: '100%',
+					height: '100%',
+					allowHtml: true,
+					cssClassNames: {
+						tableCell: 'wrap-cell'
+					}
+				};
+				var table = new google.visualization.Table(document.getElementById('OutputTable'));
+				table.draw(data, options);
+				var resultCountElement = document.getElementById("resultCount");
+				resultCountElement.style.backgroundColor = "white";
+				setTimeout(function() {
+				resultCountElement.style.backgroundColor = "";
+				}, 1000);
+				
+				var tableWrapper = document.querySelector(".google-visualization-table");
+				var sensitiveInfoCells = tableWrapper.querySelectorAll(".wrap-cell");
+				sensitiveInfoCells.forEach(function (cell) {
+					cell.style.whiteSpace = "normal";
+				});
+				document.getElementById("resultCount").textContent = "" + allData.length;
+				document.getElementById("LoadingImg").style.display="none";
+			}
+			else
+			{
+				alert('Please enter GITHUB Access Token ');
+				document.getElementById("LoadingImg").style.display="none";
+			}
+			
+		}
+		function highlightKeywords(text, keywords, domain) {
+			var regex = new RegExp(keywords, 'gi');
+			var highlightedText = text.replace(regex, function(match) {
+				return '<span style="background-color: yellow;">' + match + '</span>';
+			});
+
+			var domainRegex = new RegExp(domain, 'gi');
+			highlightedText = highlightedText.replace(domainRegex, function(match) {
+				return '<span style="background-color: red;">' + match + '</span>';
+			});
+
+			return highlightedText;
+		}
+		document.addEventListener("DOMContentLoaded", function() {
+		document.getElementById('btnExportCSV').addEventListener('click', function () {
+			if (allData.length > 0) {
+			exportTableToCSV();
+			} else {
+				alert('No data to export.');
+			}
+		});
+		function exportTableToCSV() {
+			var csvContent = "";
+
+		var headerRow = ['Full Name', 'Path', 'GIT Repo URL', 'Sensitive Info'];
+		csvContent += headerRow.join(',') + '\r\n';
+
+		allData.forEach(function (rowData) {
+			var csvRow = rowData.map(function (cellData, columnIndex) {
+              if (columnIndex === 2) {
+                var tempElement = document.createElement('div');
+                tempElement.innerHTML = cellData;
+                var anchorElement = tempElement.querySelector('a');
+                if (anchorElement) {
+                    return '"' + anchorElement.href.replace(/"/g, '""') + '"';
+                } else {
+                    return '""';
+                }
+            } else if (columnIndex === 3) {
+                var tempElement = document.createElement('div');
+                tempElement.innerHTML = cellData;
+                return '"' + tempElement.textContent.replace(/"/g, '""') + '"';
+            }
+				return '"' + cellData.replace(/"/g, '""') + '"';
+        });
+        csvContent += csvRow.join(',') + '\r\n';
+	});
+
+		var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		var link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		var CompanyDomain = document.getElementById('CompanyDomain').value;
+		var SensitiveInfo = document.getElementById('SensitiveInfo').value;
+		var filename = 'github_search_results_' + CompanyDomain + '_' + SensitiveInfo + '.csv';
+		link.download = filename;
+		link.style.display = 'none';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
+	
+});
+	function resetPage() {
+            location.reload();
+			document.getElementById('CompanyDomain').value = '';
+			document.getElementById('customSearchTerm').value = '';
+			document.getElementById('SensitiveInfo').value = 'Secret_Key'
+        }
+</script>
+
+	</head>
+  	<body>
+	  <h1 align="center"; style="color: red;">GIT Recon</h1>
+		<div class="container-fluid">
+			<div class="row" id="eventForms">
+				<div class="col-md-12">
+					<div class="dropdown" style="margin-top: 1%;left:4%">
+					<table class="table" style="box-shadow: 0px 0px 10px 3px #e0e0e0;border-radius: 10px;background-color: #000000; opacity: 0.75">
+						<tr>
+							<td><label for="txtClassroomName"; style="color: red;">Company Domain* : </label> <input type="text" id="CompanyDomain" width="150" class="form-control" name="CompanyDomain" placeholder="Company Domain to Scan"></td>
+							<td><label for="txtClassroomName"; style="color: red;">GITHUB Access Token* : </label> <input type="password" id="GitAccessToken" width="150" class="form-control" name="GitAccessToken" placeholder="Provide your GITHUB Access Token ..."></td>
+							<td><label for="txtClassroomName"; style="color: red;">Sensitive Information Keyword: </label>
+							<select class="form-control" name="SensitiveInfo" id="SensitiveInfo">
+							<option value="Secret_Key" selected="true">Secret_Key</option>
+							<option value="secret" >Secret</option>
+							<option value="key" >Key</option>
+							<option value="private key" >Private Key</option>
+							<option value="password">Password</option>
+							<option value="passkey" >Passkey</option>
+							<option value="passphrase" >Passphrase</option>
+							<option value="passcode" >Passcode</option>
+							<option value="credential" >Credential</option>
+							<option value="hashes" >Hashes</option>
+							<option value="token key" >Token Key</option>
+							<option value="token" >Token</option>
+							<option value="api key" >api key</option>
+							<option value="api" >api</option>
+							<option value="client secret" >Client Secret</option>
+						<td>
+						<label for="txtClassroomName"; style="color: red;">Custom Keyword: </label>
+						<input type="text" id="customSearchTerm" width="150" class="form-control" name="customSearchTerm" placeholder="Custom keyword search(optional)" oninput="handleCustomSearch()">
+						</td>
+						</tr>
+						
+						</td>
+						<tr>
+							<td colspan="2"> <input type="button" id="btnSearchData" value="Scan Github" class="btn btn-info" onclick="Secretscanning()">
+							<button class="btn btn-primary" id="btnExportCSV">Export in CSV</button>
+							<button class="btn btn-warning" id="btnReset" onclick="resetPage()">Reset</button>						
+							<h3 align="left"; style="color: red;">Total Search Count: <span id="resultCount"></span></h3>
+							</td>
+						</tr>
+					</table>
+					<div align="center"><img src="loading.gif" id='LoadingImg' style="display: none;" ></div>
+					</div>
+
+					<div id='OutputTable'>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-xs-1">
+				</div>
+			<div class="col-xs-10">
+				<hr>
+				<span id="tblResult"></span>
+			</div>
+			<div class="col-xs-1">
+			</div>
+		</div>
+	</body>
+</html>
