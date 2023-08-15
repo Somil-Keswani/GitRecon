@@ -18,5 +18,5 @@ Search results can be exported in CSV file, downloaded with Company Domain & sea
 ![GR_Landing_Page](https://github.com/Somil-Keswani/GitRecon/assets/30586163/1c26b1ea-afc5-4a31-aa88-20044587a11c)
 
 ## Author
-* [Somil Keswani](https://www.linkedin.com/in/somil-keswani/)
+[Somil Keswani](https://www.linkedin.com/in/somil-keswani/)
 
